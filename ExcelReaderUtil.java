@@ -227,20 +227,117 @@ public class ExcelReaderUtil {
      * 
      * @param args Command line arguments
      */
+    /**
+     * Get the number of rows in a specific sheet
+     * 
+     * @param filePath Path to the Excel file
+     * @param sheetName Name of the sheet
+     * @return Number of rows in the sheet (including the header row)
+     * @throws IOException If there's an issue reading the file
+     */
+    public static int getRowCount(String filePath, String sheetName) throws IOException {
+        try (FileInputStream fis = new FileInputStream(new File(filePath));
+             Workbook workbook = getWorkbook(fis, filePath)) {
+            
+            Sheet sheet = workbook.getSheet(sheetName);
+            if (sheet == null) {
+                throw new IllegalArgumentException("Sheet not found: " + sheetName);
+            }
+            
+            // Returns the last row index + 1 (which gives total number of rows)
+            return sheet.getLastRowNum() + 1;
+        }
+    }
+    
+    /**
+     * Get the number of rows in a sheet by index
+     * 
+     * @param filePath Path to the Excel file
+     * @param sheetIndex Index of the sheet (0-based)
+     * @return Number of rows in the sheet (including the header row)
+     * @throws IOException If there's an issue reading the file
+     */
+    public static int getRowCountByIndex(String filePath, int sheetIndex) throws IOException {
+        try (FileInputStream fis = new FileInputStream(new File(filePath));
+             Workbook workbook = getWorkbook(fis, filePath)) {
+            
+            Sheet sheet = workbook.getSheetAt(sheetIndex);
+            // Returns the last row index + 1 (which gives total number of rows)
+            return sheet.getLastRowNum() + 1;
+        }
+    }
+    
+    /**
+     * Get the number of non-empty rows in a sheet
+     * 
+     * @param filePath Path to the Excel file
+     * @param sheetName Name of the sheet
+     * @return Number of non-empty rows in the sheet
+     * @throws IOException If there's an issue reading the file
+     */
+    public static int getNonEmptyRowCount(String filePath, String sheetName) throws IOException {
+        try (FileInputStream fis = new FileInputStream(new File(filePath));
+             Workbook workbook = getWorkbook(fis, filePath)) {
+            
+            Sheet sheet = workbook.getSheet(sheetName);
+            if (sheet == null) {
+                throw new IllegalArgumentException("Sheet not found: " + sheetName);
+            }
+            
+            int nonEmptyRowCount = 0;
+            for (Row row : sheet) {
+                if (!isRowEmpty(row)) {
+                    nonEmptyRowCount++;
+                }
+            }
+            
+            return nonEmptyRowCount;
+        }
+    }
+    
+    /**
+     * Check if a row is empty
+     * 
+     * @param row Row to check
+     * @return true if the row is empty, false otherwise
+     */
+    private static boolean isRowEmpty(Row row) {
+        if (row == null) {
+            return true;
+        }
+        
+        for (int c = row.getFirstCellNum(); c < row.getLastCellNum(); c++) {
+            Cell cell = row.getCell(c);
+            if (cell != null && cell.getCellType() != CellType.BLANK) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
     public static void main(String[] args) {
         try {
+            String filePath = "path/to/your/file.xlsx";
+            
             // Example of reading entire workbook
-            List<List<List<Object>>> workbookData = readEntireWorkbook("path/to/your/file.xlsx");
+            List<List<List<Object>>> workbookData = readEntireWorkbook(filePath);
             
             // Example of reading a specific sheet by name
-            List<List<Object>> sheetData = readSheet("path/to/your/file.xlsx", "Sheet1");
+            List<List<Object>> sheetData = readSheet(filePath, "Sheet1");
             
             // Example of reading sheet as map
-            List<Map<String, Object>> mappedSheetData = readSheetAsMap("path/to/your/file.xlsx", "Sheet1");
+            List<Map<String, Object>> mappedSheetData = readSheetAsMap(filePath, "Sheet1");
+            
+            // Get row counts
+            int totalRowCount = getRowCount(filePath, "Sheet1");
+            int nonEmptyRowCount = getNonEmptyRowCount(filePath, "Sheet1");
             
             // Print some data (remove in production)
             System.out.println("Workbook Sheets: " + workbookData.size());
-            System.out.println("First Sheet Rows: " + sheetData.size());
+            System.out.println("First Sheet Total Rows: " + totalRowCount);
+            System.out.println("First Sheet Non-Empty Rows: " + nonEmptyRowCount);
+            System.out.println("First Sheet Data Rows: " + sheetData.size());
             System.out.println("Mapped Sheet Rows: " + mappedSheetData.size());
             
         } catch (IOException e) {
